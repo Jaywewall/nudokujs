@@ -7,6 +7,8 @@
 
     <script src="tailwindcss.js"></script>
     <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="sudokuJS.js"></script>
 </head>
 <body class="flex flex-col h-full antialiased overflow-hidden">
 
@@ -126,8 +128,13 @@
                 <input id="assist-hidden-singles-toggle" type="checkbox" class="h-4 w-4 rounded border-[var(--border-strong)] text-blue-600 focus:ring-blue-500">
              </div>
              <div class="border-t border-[var(--border-color)] pt-4">
-                <button id="solve-singles-btn" class="w-full p-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition text-white font-medium">
-                    Solve Single-Candidate Cells
+                <button id="solve-puzzle-btn" class="w-full p-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition text-white font-medium">
+                    Solve Puzzle
+                </button>
+             </div>
+             <div class="border-t border-[var(--border-color)] pt-4">
+                <button id="hint-btn" class="w-full p-2 rounded-lg bg-gray-600 hover:bg-gray-700 transition text-white font-medium">
+                    Hint
                 </button>
              </div>
         </div>
@@ -191,5 +198,7 @@
     <script src="app.interactions.js"></script>
     <script src="app.board.js"></script>
     <script src="app.main.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="sudokuJS.js"></script>
 </body>
 </html>
