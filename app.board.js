@@ -73,19 +73,22 @@ function generateRadialMenu() {
     }
 }
 
-function loadBoard(boardString, solutionString = "", puzzleId = null) {
-    initialBoardString = boardString.replace(/0/g, '.');
-    initialSolutionString = solutionString.replace(/0/g, '.');
+function loadBoard(boardObject, solutionObject, puzzleId = null) {
+    const boardString = boardObject.map(cell => cell.val === null ? '.' : cell.val).join('');
+    const solutionString = solutionObject.map(cell => cell.val === null ? '.' : cell.val).join('');
+
+    initialBoardString = boardString;
+    initialSolutionString = solutionString;
     currentSolutionString = initialSolutionString;
     currentPuzzleId = puzzleId;
 
     console.log(`Loading puzzle ID: ${currentPuzzleId || 'N/A'}`);
 
     gameState = initialBoardString.split('').map((char, index) => {
-        const value = parseInt(char.replace('.', '0'), 10);
+        const value = (char === '.') ? null : parseInt(char, 10);
         return {
-            value: value === 0 ? null : value,
-            isGiven: value !== 0,
+            value: value,
+            isGiven: value !== null,
             candidates: new Set(),
             antiCandidates: new Set(),
             index: index,
@@ -217,3 +220,12 @@ function updateHiddenSinglesState() {
     }
 }
 // --- END ---
+function updateGameStateWithBoard(boardObject) {
+    gameState = boardObject.map((cell, index) => {
+        const value = cell.val === null ? null : cell.val;
+        return {
+            ...gameState[index],
+            value: value,
+        };
+    });
+}

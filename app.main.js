@@ -244,22 +244,24 @@ function setupEventListeners() {
         renderBoard();
     });
 
-    // MODIFIED: Listener for Solve Singles Button
-    document.getElementById('solve-singles-btn').addEventListener('click', async () => {
-        // --- NEW: Hide modal instantly, without animation ---
-        if (modals.assistance) {
-            modals.assistance.style.display = 'none';
-        }
-        if (modals.backdrop) {
-            // Also hide backdrop instantly. We must remove opacity class 
-            // *before* setting display none, or the transition will hang
-            modals.backdrop.classList.add('opacity-0'); 
-            modals.backdrop.style.display = 'none';
-        }
-        // --- END NEW ---
-        
-        await solveCandidateSingles(); // Call the new function from app.interactions.js
-        // REMOVED: hideModal('assistance'); // Modal is now hidden instantly above
+    // MODIFIED: Listener for Solve Puzzle Button
+    document.getElementById('solve-puzzle-btn').addEventListener('click', async () => {
+        mySudokuJS.setBoard(gameState);
+        mySudokuJS.solveAll();
+        const solvedBoard = mySudokuJS.getBoard();
+        updateGameStateWithBoard(solvedBoard);
+        renderBoard();
+        hideModal('assistance');
+    });
+
+    // Listener for Hint Button
+    document.getElementById('hint-btn').addEventListener('click', () => {
+        mySudokuJS.setBoard(gameState);
+        mySudokuJS.solveStep();
+        const hintedBoard = mySudokuJS.getBoard();
+        updateGameStateWithBoard(hintedBoard);
+        renderBoard();
+        hideModal('assistance');
     });
     // --- END: Assistance Feature Listeners ---
 
