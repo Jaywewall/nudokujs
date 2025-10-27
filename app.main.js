@@ -174,92 +174,30 @@ function setupEventListeners() {
 
     // Button to open the new game select modal
     document.getElementById('new-game-modal-btn').addEventListener('click', () => {
-        console.log("New Game button clicked!"); // DEBUG
-        const difficultySelect = document.getElementById('difficulty-select');
-        if (difficultySelect) {
-            console.log(`Setting difficulty select to: ${activeDifficulty}`); // DEBUG
-            difficultySelect.value = activeDifficulty;
-        } else {
-            console.error("Error: Difficulty select element not found!"); // DEBUG
-        }
-        console.log(`Calling populatePuzzleList with difficulty: ${activeDifficulty}`); // DEBUG
-        populatePuzzleList(activeDifficulty);
-        console.log("Calling showModal('newGameSelect')"); // DEBUG
         showModal('newGameSelect');
+    });
+
+    document.getElementById('start-new-game-btn').addEventListener('click', () => {
+        const difficulty = document.getElementById('difficulty-select').value;
+        startSelectedPuzzle(null, difficulty);
     });
 
     // --- MODIFIED: Assistance Feature Listeners ---
     document.getElementById('assistance-btn').addEventListener('click', () => showModal('assistance'));
     document.getElementById('close-assistance-modal').addEventListener('click', () => hideModal('assistance'));
-    
-    const biValueToggle = document.getElementById('assist-bivalue-toggle');
-    const hiddenSinglesToggle = document.getElementById('assist-hidden-singles-toggle'); // <<< ADDED
-    
-    if (biValueToggle) {
-        biValueToggle.addEventListener('change', (e) => {
-            isAssistBiValueActive = e.target.checked;
-            // --- ADDED: Mutual Exclusivity ---
-            if (isAssistBiValueActive) {
-                if (hiddenSinglesToggle) hiddenSinglesToggle.checked = false;
-                isAssistHiddenSinglesActive = false;
-                gameState.forEach(cell => cell.hiddenSingle = null); // Clear state
-            }
-            // --- END ---
-            updateClearRulesButtonVisibility();
-            renderBoard(); // Re-render the board to apply/remove the rule
-        });
-    }
 
-    // <<< ADDED: Listener for Hidden Singles Toggle >>>
-    if (hiddenSinglesToggle) {
-        hiddenSinglesToggle.addEventListener('change', (e) => {
-            isAssistHiddenSinglesActive = e.target.checked;
-            // --- ADDED: Mutual Exclusivity ---
-            if (isAssistHiddenSinglesActive) {
-                if (biValueToggle) biValueToggle.checked = false;
-                isAssistBiValueActive = false;
-                updateHiddenSinglesState(); // Run the calculation once
-            } else {
-                // Clear the state if toggled off
-                gameState.forEach(cell => cell.hiddenSingle = null);
-            }
-            // --- END ---
-            updateClearRulesButtonVisibility();
-            renderBoard(); // Re-render to apply/remove highlights
-        });
-    }
-    // <<< END >>>
-
-    document.getElementById('clear-rules-btn').addEventListener('click', () => {
-        // Find all assistance toggles and uncheck them
-        if (biValueToggle) biValueToggle.checked = false;
-        if (hiddenSinglesToggle) hiddenSinglesToggle.checked = false; // <<< ADDED
-
-        // Manually trigger the state update and re-render
-        isAssistBiValueActive = false;
-        isAssistHiddenSinglesActive = false; // <<< ADDED
-        gameState.forEach(cell => cell.hiddenSingle = null); // <<< ADDED
-        
-        updateClearRulesButtonVisibility();
-        renderBoard();
+    // MODIFIED: Listener for Solve Puzzle Button
+    document.getElementById('solve-puzzle-btn').addEventListener('click', async () => {
+        mySudokuJS.setBoard(mySudokuJS.getBoard());
+        mySudokuJS.solveAll();
+        hideModal('assistance');
     });
 
-    // MODIFIED: Listener for Solve Singles Button
-    document.getElementById('solve-singles-btn').addEventListener('click', async () => {
-        // --- NEW: Hide modal instantly, without animation ---
-        if (modals.assistance) {
-            modals.assistance.style.display = 'none';
-        }
-        if (modals.backdrop) {
-            // Also hide backdrop instantly. We must remove opacity class 
-            // *before* setting display none, or the transition will hang
-            modals.backdrop.classList.add('opacity-0'); 
-            modals.backdrop.style.display = 'none';
-        }
-        // --- END NEW ---
-        
-        await solveCandidateSingles(); // Call the new function from app.interactions.js
-        // REMOVED: hideModal('assistance'); // Modal is now hidden instantly above
+    // Listener for Hint Button
+    document.getElementById('hint-btn').addEventListener('click', () => {
+        mySudokuJS.setBoard(mySudokuJS.getBoard());
+        mySudokuJS.solveStep();
+        hideModal('assistance');
     });
     // --- END: Assistance Feature Listeners ---
 
@@ -278,18 +216,10 @@ function setupEventListeners() {
 
     // Modal Confirm Actions
     document.getElementById('confirm-reset-btn').addEventListener('click', () => {
-        const currentPuzzleData = puzzleCatalog[activeDifficulty]?.find(p => p.id === currentPuzzleId);
-        if (currentPuzzleData) {
-            loadBoard(currentPuzzleData.puzzle, currentPuzzleData.solution, currentPuzzleData.id);
-        } else {
-            const firstPuzzle = puzzleCatalog.Easy?.[0];
-            if (firstPuzzle) {
-                loadBoard(firstPuzzle.puzzle, firstSpoon.solution, firstPuzzle.id);
-            } else {
-                loadBoard(initialBoardString, initialSolutionString);
-            }
-        }
-        clearSelections();
+        mySudokuJS.setBoard(initialBoard);
+        antiCandidates = Array(81).fill(new Set());
+        saveHistory();
+        renderBoard();
         hideModal('reset');
     });
 
@@ -322,37 +252,21 @@ function setupEventListeners() {
     radialMenu.addEventListener('click', (e) => {
         const item = e.target.closest('.radial-item');
         // Ensure radial target is valid before proceeding
-        if (item && radialTargetIndex !== null && gameState[radialTargetIndex]) {
-            let changeMade = false; // Flag specifically for the erase action
-
+        if (item && radialTargetIndex !== null) {
             if (item.dataset.number) {
                  const num = parseInt(item.dataset.number);
-                 // handleRadialInput sets final value, clears candidates, saves history, renders, highlights, etc.
-                 // It also clears selections/target internally.
                  handleRadialInput(num, radialTargetIndex);
-                 // No need for explicit changeMade check here as handleRadialInput handles changes
             }
             else if (item.dataset.action === 'erase') {
-                 // Check if the target is erasable (not given)
-                 if (!gameState[radialTargetIndex].isGiven) {
-                     if (handleEraseInput(radialTargetIndex)) { // handleEraseInput NO LONGER saves history
-                         changeMade = true;
-                     }
+                 if (handleEraseInput(radialTargetIndex)) {
+                    saveHistory();
                  }
-                 // Clear target and selection after erase attempt via radial menu
                  clearTappedTarget();
                  clearCellSelections();
-
-                 // Save history and Render *if* erase made a change
-                 if (changeMade) {
-                    saveHistory(); // <<< Save history here
-                    renderBoard();
-                 }
             }
-            hideRadialMenu(); // <<< FIXED TYPO: Was hideModalMenu()
+            hideRadialMenu();
         } else {
-             // If click is not on item or target is invalid, just hide menu
-             hideRadialMenu(); // <<< FIXED TYPO: Was hideModalMenu()
+             hideRadialMenu();
         }
     });
 
@@ -383,18 +297,12 @@ function setupEventListeners() {
 }
 
 // --- ADDED: Helper for Assistance Feature ---
-function updateClearRulesButtonVisibility() {
-    const clearRulesBtn = document.getElementById('clear-rules-btn');
-    // Check all assistance states. If any are true, show the button.
-    const anyRuleActive = isAssistBiValueActive || isAssistHiddenSinglesActive; // <<< MODIFIED
-    
-    if (anyRuleActive) {
-        clearRulesBtn.classList.remove('hidden');
-    } else {
-        clearRulesBtn.classList.add('hidden');
-    }
+async function init() {
+    generateGrid();
+    generateNumberPicker();
+    setupEventListeners();
+    await loadPuzzles();
 }
-
 
 // --- START GAME ---
 document.addEventListener('DOMContentLoaded', init);

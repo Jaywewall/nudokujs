@@ -56,14 +56,12 @@ function setInputMode(index) {
 
 
 function handleNumberInput(num) {
-    // Less used now.
+    const board = mySudokuJS.getBoard();
     if (inputModeCell !== null) {
         clearTappedTarget();
-        const cellState = gameState[inputModeCell];
-        if (!cellState.isGiven && cellState.value !== num) {
-            cellState.value = num;
-            cellState.candidates.clear(); cellState.antiCandidates.clear();
-            clearPeerCandidates(inputModeCell, num);
+        const cellState = board[inputModeCell];
+        if (!cellState.isGiven && cellState.val !== num) {
+            mySudokuJS.setBoardCell(inputModeCell, num);
             saveHistory(); renderBoard(); clearSelections(); highlightNumber(num); runCompletionChecks(inputModeCell, num);
         }
     } else if (selectedCells.size > 0) {
@@ -79,29 +77,22 @@ function handleCandidateInput(num, type) {
   // Primarily called by the Input Pill
   clearTappedTarget(); // Candidate input applies to selection
   let changed = false;
-  const targetSet   = type === 'candidate' ? 'candidates'     : 'antiCandidates';
-  const oppositeSet = type === 'candidate' ? 'antiCandidates' : 'candidates';
+  const board = mySudokuJS.getBoard();
 
   selectedCells.forEach(index => {
-    const cellState = gameState[index];
-    let clashFound = false;
-    if (type === 'candidate') {
-      const cellPeers = new Set([...peers[index].row, ...peers[index].col, ...peers[index].box]);
-      for (const peerIndex of cellPeers) { if (gameState[peerIndex].value === num) { clashFound = true; break; } }
-    }
-    if (!cellState.isGiven && !cellState.value && (!clashFound || type !== 'candidate')) {
-      const removedFromOpposite = cellState[oppositeSet].delete(num);
-      let modifiedTarget = false;
-      if (cellState[targetSet].has(num)) {
-          cellState[targetSet].delete(num);
-          modifiedTarget = true;
-      } else {
-          cellState[targetSet].add(num);
-          modifiedTarget = true;
-      }
-      if (removedFromOpposite || modifiedTarget) {
-          changed = true;
-      }
+    const cellState = board[index];
+    if (!cellState.isGiven && !cellState.val) {
+        if (type === 'candidate') {
+            mySudokuJS.toggleCandidate(index, num);
+            changed = true;
+        } else {
+            if(antiCandidates[index].has(num)) {
+                antiCandidates[index].delete(num);
+            } else {
+                antiCandidates[index].add(num);
+            }
+            changed = true;
+        }
     }
   });
   if (changed) {
@@ -122,13 +113,14 @@ function handleCandidateCycling(num) {
     let changed = false;
     const applicableCells = [];
     let countEmpty = 0, countCandidate = 0, countAntiCandidate = 0;
+    const board = mySudokuJS.getBoard();
 
     selectedCells.forEach(index => {
-        const cellState = gameState[index];
-        if (!cellState.isGiven && cellState.value === null) {
+        const cellState = board[index];
+        if (!cellState.isGiven && cellState.val === null) {
             applicableCells.push(index);
-            if (cellState.candidates.has(num)) countCandidate++;
-            else if (cellState.antiCandidates.has(num)) countAntiCandidate++;
+            if (cellState.candidates && cellState.candidates[num-1] !== null) countCandidate++;
+            else if (antiCandidates[index] && antiCandidates[index].has(num)) countAntiCandidate++;
             else countEmpty++;
         }
     });
@@ -142,37 +134,29 @@ function handleCandidateCycling(num) {
     else if (countCandidate > 0) action = 'setToAntiCandidate';
     else if (countAntiCandidate > 0) action = 'setToEmpty';
 
-    // console.log(`Pickup Action for ${num}: ${action}. Counts: E=${countEmpty}, C=${countCandidate}, A=${countAntiCandidate}`); // DEBUG
-
     applicableCells.forEach(index => {
-        const cellState = gameState[index];
-        const isCandidate = cellState.candidates.has(num);
-        const isAntiCandidate = cellState.antiCandidates.has(num);
+        const cellState = board[index];
+        const isCandidate = cellState.candidates && cellState.candidates[num-1] !== null;
+        const isAntiCandidate = antiCandidates[index] && antiCandidates[index].has(num);
         const isEmpty = !isCandidate && !isAntiCandidate;
 
         switch (action) {
             case 'setToCandidate':
                 if (isEmpty) {
-                    let clashFound = false;
-                    const cellPeers = new Set([...peers[index].row, ...peers[index].col, ...peers[index].box]);
-                    for (const peerIndex of cellPeers) { if (gameState[peerIndex].value === num) { clashFound = true; break; } }
-                    if (!clashFound) {
-                        cellState.candidates.add(num);
-                        cellState.antiCandidates.delete(num);
-                        changed = true;
-                    }
+                    mySudokuJS.toggleCandidate(index, num);
+                    changed = true;
                 }
                 break;
             case 'setToAntiCandidate':
                 if (isCandidate) {
-                    cellState.candidates.delete(num);
-                    cellState.antiCandidates.add(num);
+                    mySudokuJS.toggleCandidate(index, num);
+                    antiCandidates[index].add(num);
                     changed = true;
                 }
                 break;
             case 'setToEmpty':
                 if (isAntiCandidate) {
-                    cellState.antiCandidates.delete(num);
+                    antiCandidates[index].delete(num);
                     changed = true;
                 }
                 break;
@@ -189,117 +173,39 @@ function handleCandidateCycling(num) {
 // ****** MODIFIED FUNCTION ******
 function handleRadialInput(num, index) {
     clearTappedTarget(); clearCellSelections();
-    const cellState = gameState[index];
-    if (!cellState.isGiven && cellState.value !== num) {
-        cellState.value = num;
-        cellState.candidates.clear(); cellState.antiCandidates.clear();
-        clearPeerCandidates(index, num);
-        saveHistory(); renderBoard(); highlightNumber(num); runCompletionChecks(index, num);
+    const board = mySudokuJS.getBoard();
+    const cellState = board[index];
+    if (!cellState.isGiven && cellState.val !== num) {
+        mySudokuJS.setBoardCell(index, num);
+        saveHistory();
+        highlightNumber(num);
+        runCompletionChecks(index, num);
     }
 }
 
 // ****** MODIFIED FUNCTION (Returns boolean, NO saveHistory) ******
 function handleEraseInput(index) {
-    const cellState = gameState[index];
+    const board = mySudokuJS.getBoard();
+    const cellState = board[index];
     if (cellState.isGiven) return false;
 
     let changed = false;
-    if (cellState.value !== null || cellState.candidates.size > 0 || cellState.antiCandidates.size > 0) {
-        if (cellState.value !== null) { cellState.value = null; changed = true; }
-        if (cellState.candidates.size > 0) { cellState.candidates.clear(); changed = true; }
-        if (cellState.antiCandidates.size > 0) { cellState.antiCandidates.clear(); changed = true; }
+    if (cellState.val !== null || (cellState.candidates && cellState.candidates.some(c => c !== null)) || (antiCandidates[index] && antiCandidates[index].size > 0)) {
+        mySudokuJS.clearCell(index);
+        antiCandidates[index].clear();
+        changed = true;
     }
     return changed; // Indicate if change occurred
 }
 
 function clearPeerCandidates(index, num) {
-    // (unchanged)
-    const cellPeers = new Set([...peers[index].row, ...peers[index].col, ...peers[index].box]);
-    cellPeers.forEach(peerIndex => {
-        const peerState = gameState[peerIndex];
-        if (peerState.candidates.has(num)) peerState.candidates.delete(num);
-        if (peerState.antiCandidates.has(num)) peerState.antiCandidates.delete(num);
-    });
+    // This is now handled by sudokuJS
 }
 
 // Helper: is solved (unchanged)
 function isGridSolved() {
-    // ... (implementation unchanged) ...
-    if (currentSolutionString && currentSolutionString.length === 81) {
-        for (let i = 0; i < 81; i++) {
-            const ch = currentSolutionString[i];
-            const sol = parseInt(ch, 10);
-            if (Number.isNaN(sol) || sol < 1 || sol > 9 || gameState[i].value !== sol) {
-                return false;
-            }
-        }
-        return true;
-    }
-    return gameState.every(cell => cell.value !== null);
+    return mySudokuJS.isBoardFinished();
 }
-
-// --- MODIFIED: Solve Candidate Singles Function (with Chaining) ---
-async function solveCandidateSingles() {
-    let anyChangeMade = false;
-
-    while (true) {
-        const singlesThisPass = []; // Stores { index, num }
-
-        // 1. Find all singles in the current board state
-        for (let i = 0; i < 81; i++) {
-            const cellState = gameState[i];
-            if (cellState.value === null && cellState.candidates.size === 1) {
-                const num = cellState.candidates.values().next().value;
-                singlesThisPass.push({ index: i, num: num });
-            }
-        }
-
-        // 2. Check for Exit: If no singles were found, break the loop
-        if (singlesThisPass.length === 0) {
-            break; // No more singles found, exit the while loop
-        }
-
-        anyChangeMade = true; // Mark that we made a change at least once
-
-        // 3. Solve and Animate this pass
-        const solvedCellIndices = [];
-        for (const single of singlesThisPass) {
-            const { index, num } = single;
-            const cellState = gameState[index];
-
-            // Check again in case a peer was solved in this same pass
-            if (cellState.value === null && cellState.candidates.has(num)) {
-                cellState.value = num;
-                cellState.candidates.clear();
-                cellState.antiCandidates.clear();
-                
-                clearPeerCandidates(index, num); // This creates new singles for the next loop
-                solvedCellIndices.push(index);
-            }
-        }
-
-        // 4. Save, Render, and Animate once per pass (if any were solved)
-        if (solvedCellIndices.length > 0) {
-            saveHistory(); // Save the entire "wave" as one step
-            renderBoard(); // Render the board with the new values
-            await animateHouse(solvedCellIndices, 50); // Animate solved cells
-        }
-        
-        // Loop repeats to check for new singles...
-    }
-
-    // 5. After the loop is finished, check if the board is complete
-    if (anyChangeMade && isGridSolved()) {
-        await playFullBoardAnimation();
-        if (currentPuzzleId) {
-            markPuzzleAsSolved(currentPuzzleId, activeDifficulty);
-        }
-    }
-}
-// --- END ---
-
-
-// --- KEYBOARD HANDLING ---
 // ****** MODIFIED FUNCTION ******
 function handleKeyboardInput(e) {
     if (modals.backdrop.style.display === 'block') return;
@@ -309,7 +215,8 @@ function handleKeyboardInput(e) {
         e.preventDefault();
         let changeMade = false;
         if (tappedTargetCellIndex !== null) {
-            const targetState = gameState[tappedTargetCellIndex];
+            const board = mySudokuJS.getBoard();
+            const targetState = board[tappedTargetCellIndex];
             if (targetState && !targetState.isGiven) {
                 if (handleEraseInput(tappedTargetCellIndex)) changeMade = true;
             }
@@ -344,14 +251,13 @@ function handleKeyboardInput(e) {
 // Specific handler for keyboard FINAL value input
 function handleNumberInputKeyboard(num, index) {
     clearTappedTarget(); clearCellSelections();
-    const cellState = gameState[index];
+    const board = mySudokuJS.getBoard();
+    const cellState = board[index];
     if (!cellState.isGiven) {
-        if (cellState.value !== num) {
-            cellState.value = num;
-            cellState.candidates.clear(); cellState.antiCandidates.clear();
-            clearPeerCandidates(index, num);
+        if (cellState.val !== num) {
+            mySudokuJS.setBoardCell(index, num);
             saveHistory(); // Single action, save here
-            renderBoard(); highlightNumber(num); runCompletionChecks(index, num);
+            highlightNumber(num); runCompletionChecks(index, num);
         } else {
              clearHighlights();
         }
@@ -423,8 +329,9 @@ function handleGridPointerDown(e) {
     const cell = e.target.closest('.sudoku-cell'); if (!cell) return;
     const index = parseInt(cell.dataset.index, 10);
     const now = Date.now();
+    const board = mySudokuJS.getBoard();
 
-    if (now - lastTap < 300 && index === lastTapIndex && !gameState[index].isGiven) {
+    if (now - lastTap < 300 && index === lastTapIndex && !board[index].isGiven) {
         clearTimeout(longPressTimer); clearTappedTarget(); clearCellSelections();
         showRadialMenu(e.clientX, e.clientY, index);
         lastTap = 0; lastTapIndex = -1; isDragging = false; longPressFired = false;
@@ -435,8 +342,8 @@ function handleGridPointerDown(e) {
     longPressFired = false; isDragging = false;
 
     longPressTimer = setTimeout(() => {
-        const cellState = gameState[index];
-        if (cellState.value === null && !cellState.isGiven) {
+        const cellState = board[index];
+        if (cellState.val === null && !cellState.isGiven) {
             longPressFired = true; isDragging = true;
             dragMode = selectedCells.has(index) ? 'deselect' : 'select';
             clearTappedTarget();
@@ -459,6 +366,7 @@ function handleGridPointerMove(e) {
 
     const element = document.elementFromPoint(e.clientX, e.clientY);
     const cell = element ? element.closest('.sudoku-cell') : null;
+    const board = mySudokuJS.getBoard();
 
     if (cell) {
         const index = parseInt(cell.dataset.index, 10);
@@ -471,7 +379,7 @@ function handleGridPointerMove(e) {
             line.forEach(lineIndex => {
                 // Ensure cell exists and is a valid target
                 const cellEl = grid.children[lineIndex];
-                if (cellEl && gameState[lineIndex].value === null && !gameState[lineIndex].isGiven) {
+                if (cellEl && board[lineIndex].val === null && !board[lineIndex].isGiven) {
                     if (dragMode === 'select' && !selectedCells.has(lineIndex)) {
                         selectedCells.add(lineIndex);
                         cellEl.classList.add('selected');
@@ -503,14 +411,15 @@ function handleGridPointerUp(e) {
     const cell = e.target.closest('.sudoku-cell');
     if (!cell) { longPressFired = false; return; }
     const index = parseInt(cell.dataset.index, 10);
+    const board = mySudokuJS.getBoard();
 
     if (Date.now() - pointerDownTime < LONG_PRESS_DURATION && !longPressFired) {
         // --- Single Tap Logic ---
-        const cellState = gameState[index];
+        const cellState = board[index];
 
-        if (cellState.value !== null) {
+        if (cellState.val !== null) {
             // Tap Filled Cell (Given or User-Entered)
-            const num = cellState.value;
+            const num = cellState.val;
             const targetCellEl = grid.children[index];
             const isWrong = targetCellEl?.querySelector('span.wrong-value');
 
@@ -559,8 +468,3 @@ function handleGridPointerUp(e) {
     }
     longPressFired = false;
 }
-
-// --- Changes needed in app.render.js ---
-// - Add clearTappedTarget() call inside clearHighlights()
-// - Add clearTappedTarget() call inside highlightNumber() before clearHighlights()
-// (These were previously noted and should already be in app.render.js)

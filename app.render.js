@@ -1,112 +1,72 @@
 // --- RENDERING ---
 function renderBoard() {
-    // --- ADDED: Assistance Feature Check ---
-    // Apply/Remove global class based on assistance state
-    if (isAssistBiValueActive) {
-        grid.classList.add('assist-bivalue-active');
-    } else {
-        grid.classList.remove('assist-bivalue-active');
-    }
-    // --- End Assistance Feature Check ---
+    clearHighlights();
+    clearTappedTarget();
+    updateNumberPicker();
 
-    gameState.forEach((cellState, i) => {
+    const currentBoard = mySudokuJS.getBoard();
+    currentBoard.forEach((cellState, i) => {
         const cellEl = grid.children[i];
-        cellEl.innerHTML = ''; // Clear previous content
-        
-        // --- ADDED: Clear assistance classes ---
-        cellEl.classList.remove('bivalue-cell');
-        // Clear all possible pulse animations
-        cellEl.className = cellEl.className.replace(/animate-pulse-c[1-9]/g, '');
-        // --- End ---
+        const value = cellState.val;
 
-        // --- Start of Restored Logic ---
-        if (cellState.value) { // Cell has a final value (given or user-entered)
-            cellEl.classList.remove(
-                'font-black', 'font-bold', 'font-semibold', 'font-medium', 'font-normal',
-                'text-[var(--text-secondary)]'
-            );
+        // Clear existing content and classes
+        cellEl.innerHTML = '';
+        cellEl.className = 'sudoku-cell flex items-center justify-center text-2xl cursor-pointer relative'; // Reset classes
 
-            // Determine if this user-entered value mismatches the provided solution
+        if (value) {
+            const valueSpan = document.createElement('span');
+            valueSpan.textContent = value;
+            valueSpan.classList.add('cell-value');
+
             let isWrong = false;
             if (!cellState.isGiven && currentSolutionString && currentSolutionString.length === 81) {
-                const ch = currentSolutionString[i];
-                const sol = parseInt(ch, 10);
-                if (!Number.isNaN(sol) && sol >= 1 && sol <= 9 && sol !== cellState.value) {
+                const sol = parseInt(currentSolutionString[i], 10);
+                if (!Number.isNaN(sol) && sol >= 1 && sol <= 9 && sol !== value) {
                     isWrong = true;
                 }
             }
 
             if (cellState.isGiven) {
-                const sp = document.createElement('span'); // Use span for consistent styling access
-                sp.textContent = cellState.value;
-                cellEl.appendChild(sp);
-                cellEl.classList.add('font-black', 'text-[var(--text-secondary)]'); // Style for givens
-            } else { // User-entered value
-                cellEl.classList.add('font-normal'); // Default style for user values
-                const sp = document.createElement('span');
-                sp.textContent = cellState.value;
+                valueSpan.classList.add('given');
+            } else {
+                valueSpan.classList.add('user-input');
                 if (isWrong) {
-                    sp.className = 'wrong-value'; // Special style for wrong values
+                    valueSpan.classList.add('wrong-value');
                 } else {
-                    sp.classList.add(`c${cellState.value}`); // Add color class to user-entered correct value
+                    valueSpan.style.color = COLORS[value - 1];
                 }
-                 cellEl.appendChild(sp);
             }
-        } else if (cellState.candidates.size > 0 || cellState.antiCandidates.size > 0) { // Cell has candidates/anti-candidates
-            cellEl.classList.remove(
-                'font-black', 'font-bold', 'font-semibold', 'font-medium', 'font-normal',
-                'text-[var(--text-secondary)]'
-            );
+            cellEl.appendChild(valueSpan);
+        } else {
             const candidatesGrid = document.createElement('div');
-            candidatesGrid.className = 'candidates-grid pointer-events-none';
+            candidatesGrid.classList.add('candidates-grid');
             
-            // --- ADDED: Assistance Rule Logic (Bi-Value) ---
-            if (isAssistBiValueActive) {
-                // If rule is active, check if this cell meets the criteria
-                if (cellState.candidates.size === 2) {
-                    cellEl.classList.add('bivalue-cell');
+            const candidates = cellState.candidates || [];
+            for (let k = 1; k <= 9; k++) {
+                const candItem = document.createElement('div');
+                candItem.classList.add('candidate-item');
+                if (candidates[k-1] !== null) {
+                    candItem.textContent = k;
+                    candItem.style.color = COLORS[k - 1];
                 }
-            }
-            // --- End Assistance Rule Logic ---
-
-            // --- ADDED: Assistance Rule Logic (Hidden Single) ---
-            if (isAssistHiddenSinglesActive && cellState.hiddenSingle) {
-                // Apply the pulse class for the specific number
-                cellEl.classList.add(`animate-pulse-c${cellState.hiddenSingle}`);
-            }
-            // --- End ---
-
-
-            for (let n = 1; n <= 9; n++) {
-                const candEl = document.createElement('div');
-                candEl.classList.add('candidate-item');
-                if (cellState.candidates.has(n)) {
-                    candEl.textContent = n;
-                    candEl.classList.add(`c${n}`); // Color for normal candidate
-                } else if(cellState.antiCandidates.has(n)) {
-                    candEl.textContent = n;
-                    candEl.classList.add('anti'); // Style for anti-candidate
+                if (antiCandidates[i] && antiCandidates[i].has(k)) {
+                    candItem.textContent = k;
+                    candItem.classList.add('anti');
                 }
-                // If neither, the div is empty but still part of the grid structure
-                candidatesGrid.appendChild(candEl);
+                candidatesGrid.appendChild(candItem);
             }
             cellEl.appendChild(candidatesGrid);
-        } else { // Cell is completely empty
-            cellEl.classList.remove(
-                'font-black', 'font-bold', 'font-semibold', 'font-medium', 'font-normal',
-                'text-[var(--text-secondary)]'
-            );
-            // No content needed, already cleared by cellEl.innerHTML = ''
         }
-         // --- End of Restored Logic ---
     });
-    updateNumberPickerState(); // Ensure this is called after render
+
+    applyGridLines();
+    checkCompletion();
 }
 
 function updateNumberPickerState() {
-    // --- Start of Restored Logic ---
     const counts = Array(10).fill(0);
-    gameState.forEach(cell => { if (cell.value) counts[cell.value]++; });
+    const board = mySudokuJS.getBoard();
+    board.forEach(cell => { if (cell.val) counts[cell.val]++; });
     for (let i = 1; i <= 9; i++) {
         const btn = numberPicker.querySelector(`[data-number="${i}"]`);
         if (counts[i] === 9) { // If 9 instances of the number are on the board
@@ -117,11 +77,9 @@ function updateNumberPickerState() {
             btn.classList.remove('opacity-30', 'cursor-not-allowed');
         }
     }
-     // --- End of Restored Logic ---
 }
 
 function updateUndoRedoButtons() {
-     // --- Start of Restored Logic ---
     const undoDisabled = historyIndex <= 0;
     const redoDisabled = historyIndex >= history.length - 1;
     // Update header buttons
@@ -130,7 +88,6 @@ function updateUndoRedoButtons() {
     // Update popover buttons (if they exist and need updating)
     document.getElementById('popover-undo-btn').disabled = undoDisabled;
     document.getElementById('popover-redo-btn').disabled = redoDisabled;
-     // --- End of Restored Logic ---
 }
 
 // --- HIGHLIGHTING ---
@@ -173,9 +130,8 @@ function clearHighlights() {
 
 // ****** MODIFIED FUNCTION ******
 function highlightNumber(num) {
-     // *** REMOVED: Clearing stored candidate state logic is no longer needed here ***
     clearHighlights();
-    if (!num) return; // If num is 0 or null, just clear highlights
+    if (!num) return;
 
     if (isCandidateIsolationMode) {
         toggleCandidateIsolationMode(false);
@@ -186,17 +142,18 @@ function highlightNumber(num) {
     if (btn) btn.classList.add('picker-selected');
 
     const blackedOutIndices = new Set(); // Keep track of indices to black out
+    const board = mySudokuJS.getBoard();
 
     // Step 1: Determine which cells SHOULD be blacked out (if mode is enabled)
     if (isBlackoutModeEnabled) {
         for (let i = 0; i < 81; i++) {
-            const cellState = gameState[i];
+            const cellState = board[i];
             let shouldBlackout = false;
             // Blackout GIVENS or FINAL user values of OTHER numbers
-            if (cellState.value !== null && cellState.value !== num) {
+            if (cellState.val !== null && cellState.val !== num) {
                 shouldBlackout = true;
             // Blackout ANTI-CANDIDATES of the HIGHLIGHTED number
-            } else if (!cellState.value && cellState.antiCandidates.has(num)) {
+            } else if (!cellState.val && antiCandidates[i].has(num)) {
                 shouldBlackout = true;
             }
             if (shouldBlackout) {
@@ -209,7 +166,7 @@ function highlightNumber(num) {
     // Step 2: Apply Normal Highlighting (based on classes)
     const valueCells = new Set();
     const peerCells = new Set();
-    gameState.forEach((cell, i) => { if (cell.value === num) valueCells.add(i); });
+    board.forEach((cell, i) => { if (cell.val === num) valueCells.add(i); });
     if (valueCells.size > 0) {
         // Find all peers of cells containing the highlighted value
         valueCells.forEach(i => {
@@ -242,8 +199,8 @@ function highlightNumber(num) {
 
     // If blackout is NOT enabled, also highlight cells with anti-candidates lightly
     if (!isBlackoutModeEnabled) {
-        gameState.forEach((cell, i) => {
-            if (!cell.value && cell.antiCandidates.has(num)) {
+        board.forEach((cell, i) => {
+            if (!cell.val && antiCandidates[i].has(num)) {
                  grid.children[i].classList.add(`bgc${num}-light`);
             }
         });
@@ -259,25 +216,12 @@ function highlightNumber(num) {
             if(candGrid) candGrid.classList.add('hidden'); // Ensure grid hidden if blacked out
             continue;
         }
-
-        // --- ADDED: Skip candidate visibility logic if assistance rule is active ---
-        // The assistance rule CSS will handle visibility
-        if (isAssistBiValueActive) {
-            continue;
-        }
-        // --- End ---
         
-        // --- ADDED: Skip if hidden single is active (we want to see all cands) ---
-        if (isAssistHiddenSinglesActive) {
-            continue;
-        }
-        // --- End ---
-
         // Proceed if not blacked out and has candidate grid
-        const cellState = gameState[i];
-        const hasTargetCandidate = cellState.candidates.has(num);
+        const cellState = board[i];
+        const hasTargetCandidate = cellState.candidates && cellState.candidates[num-1] !== null;
         // Only consider anti-candidate visibility if blackout is OFF
-        const hasRelevantAntiCandidate = !isBlackoutModeEnabled && cellState.antiCandidates.has(num);
+        const hasRelevantAntiCandidate = !isBlackoutModeEnabled && antiCandidates[i].has(num);
 
         if (hasTargetCandidate || hasRelevantAntiCandidate) {
             candGrid.classList.remove('hidden'); // Show the grid container
@@ -309,26 +253,14 @@ function highlightNumber(num) {
 
 
 function highlightCandidatesForNumbers(numberSet) {
-    // *** REMOVED: Clearing stored candidate state logic is no longer needed here ***
     clearHighlights();
     if (numberSet.size === 0) return;
+    const board = mySudokuJS.getBoard();
 
     for (let i = 0; i < 81; i++) {
         const cellEl = grid.children[i];
         // Don't modify cells with final values
-        if(gameState[i].value) continue;
-
-        // --- ADDED: Skip candidate visibility logic if assistance rule is active ---
-        if (isAssistBiValueActive) {
-            continue;
-        }
-        // --- End ---
-        
-        // --- ADDED: Skip if hidden single is active ---
-        if (isAssistHiddenSinglesActive) {
-            continue;
-        }
-        // --- End ---
+        if(board[i].val) continue;
 
         const candGrid = cellEl.querySelector('.candidates-grid');
         if (candGrid) {
@@ -366,12 +298,13 @@ async function runCompletionChecks(index, numJustPlaced) {
         }
         return; // Exit after full board animation
     }
+    const board = mySudokuJS.getBoard();
 
     // Number Completion Check (unchanged)
-    const numberCount = gameState.filter(c => c.value === numJustPlaced).length;
+    const numberCount = board.filter(c => c.val === numJustPlaced).length;
     if (numberCount === 9) {
         const numberIndices = [];
-        gameState.forEach((c, i) => { if (c.value === numJustPlaced) numberIndices.push(i); });
+        board.forEach((c, i) => { if (c.val === numJustPlaced) numberIndices.push(i); });
         await animateHouse(numberIndices, 50);
     }
 
@@ -381,7 +314,7 @@ async function runCompletionChecks(index, numJustPlaced) {
     for (const house of housesToCheck) {
         // Ensure house is a Set or Array before trying to spread it
         if (house instanceof Set || Array.isArray(house)) {
-            const isComplete = [...house].every(i => gameState[i].value !== null);
+            const isComplete = [...house].every(i => board[i].val !== null);
             if (isComplete) completedHouses.push([...house]);
         }
     }

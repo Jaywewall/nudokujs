@@ -15,10 +15,8 @@ const radialMenu = document.getElementById('radial-menu');
 const inputPill = document.getElementById('input-pill');
 
 // --- GAME STATE ---
-let initialBoardString = "530070000600195000098000060800060003400803001700020006060000280000419005000080079"; // Will be overwritten by JSON load
-let initialSolutionString = "534678912672195348198342567859761423426853791713924856961537284287419635345286179"; // Will be overwritten
-let currentSolutionString = "";
-let gameState = [];
+let mySudokuJS;
+let antiCandidates = [];
 let history = [];
 let historyIndex = -1;
 

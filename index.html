@@ -7,6 +7,8 @@
 
     <script src="tailwindcss.js"></script>
     <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="sudokuJS.js"></script>
 </head>
 <body class="flex flex-col h-full antialiased overflow-hidden">
 
@@ -117,17 +119,14 @@
     <div id="assistance-modal" class="bg-white fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-6 rounded-lg shadow-2xl w-11/12 max-w-lg z-50 hidden opacity-0 scale-95 transition-all duration-300">
         <h2 class="text-xl font-bold mb-4 text-[var(--text-primary)]">Assistance Features</h2>
         <div class="space-y-4">
-             <div class="flex items-center justify-between">
-                <label for="assist-bivalue-toggle" class="text-sm font-medium text-[var(--text-primary)]">Highlight Bi-Value Cells (2 Candidates)</label>
-                <input id="assist-bivalue-toggle" type="checkbox" class="h-4 w-4 rounded border-[var(--border-strong)] text-blue-600 focus:ring-blue-500">
-             </div>
-             <div class="flex items-center justify-between">
-                <label for="assist-hidden-singles-toggle" class="text-sm font-medium text-[var(--text-primary)]">Highlight Hidden Singles</label>
-                <input id="assist-hidden-singles-toggle" type="checkbox" class="h-4 w-4 rounded border-[var(--border-strong)] text-blue-600 focus:ring-blue-500">
+             <div class="border-t border-[var(--border-color)] pt-4">
+                <button id="solve-puzzle-btn" class="w-full p-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition text-white font-medium">
+                    Solve Puzzle
+                </button>
              </div>
              <div class="border-t border-[var(--border-color)] pt-4">
-                <button id="solve-singles-btn" class="w-full p-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition text-white font-medium">
-                    Solve Single-Candidate Cells
+                <button id="hint-btn" class="w-full p-2 rounded-lg bg-gray-600 hover:bg-gray-700 transition text-white font-medium">
+                    Hint
                 </button>
              </div>
         </div>
@@ -156,12 +155,10 @@
                 <option value="Expert">Expert</option>
             </select>
         </div>
-        <div id="puzzle-list-container" class="flex-grow overflow-y-auto border border-[var(--border-color)] rounded-md p-2 bg-slate-50 space-y-1">
-            <p class="text-sm text-center text-[var(--text-muted)]">Loading puzzles...</p>
-        </div>
         <div class="mt-6 flex justify-end flex-shrink-0">
             <button id="cancel-select-new-game-btn" class="py-2 px-4 rounded-lg bg-slate-200 hover:bg-slate-300 transition text-slate-700">Cancel</button>
-            </div>
+            <button id="start-new-game-btn" class="py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 transition text-white ml-4">Start New Game</button>
+        </div>
     </div>
     <div id="input-pill" class="modal-glass fixed z-50 rounded-full p-1 flex flex-col items-center gap-1 hidden opacity-0 scale-90">
         <button class="pill-item w-12 h-12 flex items-center justify-center rounded-full hover:bg-slate-500/50" data-type="selection-mode">
@@ -191,5 +188,7 @@
     <script src="app.interactions.js"></script>
     <script src="app.board.js"></script>
     <script src="app.main.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="sudokuJS.js"></script>
 </body>
 </html>

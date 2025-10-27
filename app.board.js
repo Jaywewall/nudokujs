@@ -1,12 +1,4 @@
 // --- INITIALIZATION ---
-async function init() {
-    generateGrid();
-    generateNumberPicker();
-    precomputePeers();
-    setupEventListeners();
-    // REMOVED: updateNewGameControls(); // This function no longer exists
-    await loadPuzzles(); // Fetch puzzles, load solved data, and load the first puzzle
-}
 
 function generateGrid() {
     grid.innerHTML = '';
@@ -73,25 +65,18 @@ function generateRadialMenu() {
     }
 }
 
-function loadBoard(boardString, solutionString = "", puzzleId = null) {
-    initialBoardString = boardString.replace(/0/g, '.');
-    initialSolutionString = solutionString.replace(/0/g, '.');
+let initialBoard;
+
+function loadBoard(boardObject, solutionObject, puzzleId = null) {
+    initialBoard = JSON.parse(JSON.stringify(boardObject));
+    mySudokuJS.setBoard(boardObject);
+    initialSolutionString = solutionObject.map(cell => cell.val === null ? '.' : cell.val).join('');
     currentSolutionString = initialSolutionString;
     currentPuzzleId = puzzleId;
+    antiCandidates = Array(81).fill(new Set());
 
     console.log(`Loading puzzle ID: ${currentPuzzleId || 'N/A'}`);
 
-    gameState = initialBoardString.split('').map((char, index) => {
-        const value = parseInt(char.replace('.', '0'), 10);
-        return {
-            value: value === 0 ? null : value,
-            isGiven: value !== 0,
-            candidates: new Set(),
-            antiCandidates: new Set(),
-            index: index,
-            hiddenSingle: null, // <<< ADDED
-        };
-    });
     // Reset history for the new board
     history = [];
     historyIndex = -1;
@@ -101,16 +86,13 @@ function loadBoard(boardString, solutionString = "", puzzleId = null) {
 
 
 function saveHistory() {
-    // <<< ADDED: Recalculate hidden singles before saving the state
-    if(isAssistHiddenSinglesActive) {
-        updateHiddenSinglesState(); 
-    }
-    // --- END ---
-
     if(historyIndex < history.length - 1) {
         history = history.slice(0, historyIndex + 1);
     }
-    const snapshot = JSON.parse(JSON.stringify(gameState.map(cell => ({...cell, candidates: Array.from(cell.candidates), antiCandidates: Array.from(cell.antiCandidates)}))));
+    const snapshot = {
+        board: mySudokuJS.getBoard(),
+        antiCandidates: JSON.parse(JSON.stringify(antiCandidates.map(s => Array.from(s))))
+    };
     history.push(snapshot);
     historyIndex = history.length - 1;
     updateUndoRedoButtons();
@@ -118,8 +100,9 @@ function saveHistory() {
 
 function loadFromHistory(index) {
     if(index < 0 || index >= history.length) return;
-    const snapshot = JSON.parse(JSON.stringify(history[index]));
-    gameState = snapshot.map(cell => ({ ...cell, candidates: new Set(cell.candidates), antiCandidates: new Set(cell.antiCandidates) }));
+    const snapshot = history[index];
+    mySudokuJS.setBoard(snapshot.board);
+    antiCandidates = snapshot.antiCandidates.map(a => new Set(a));
     historyIndex = index;
     renderBoard();
     updateUndoRedoButtons();
@@ -151,69 +134,13 @@ function precomputePeers() {
     }
 }
 
-// --- ADDED: Hidden Singles Solver ---
-function updateHiddenSinglesState() {
-    if (!gameState || gameState.length === 0) return;
-
-    // 1. Clear all previous hidden single states
-    for (let i = 0; i < 81; i++) {
-        gameState[i].hiddenSingle = null;
-    }
-
-    const allHouses = [];
-    // Add all 9 rows
-    for (let r = 0; r < 9; r++) {
-        const row = [];
-        for (let c = 0; c < 9; c++) row.push(r * 9 + c);
-        allHouses.push(row);
-    }
-    // Add all 9 columns
-    for (let c = 0; c < 9; c++) {
-        const col = [];
-        for (let r = 0; r < 9; r++) col.push(r * 9 + c);
-        allHouses.push(col);
-    }
-    // Add all 9 boxes
-    for (let br = 0; br < 3; br++) {
-        for (let bc = 0; bc < 3; bc++) {
-            const box = [];
-            for (let r = br * 3; r < br * 3 + 3; r++) {
-                for (let c = bc * 3; c < bc * 3 + 3; c++) box.push(r * 9 + c);
-            }
-            allHouses.push(box);
-        }
-    }
-
-    // 2. Iterate through each house (27 total)
-    for (const house of allHouses) {
-        // For this house, find candidate counts
-        const candidateCounts = Array(10).fill(0); // Index 1-9
-        const candidateMap = Array(10).fill(null).map(() => []); // Map of num -> [cellIndex, cellIndex]
-
-        for (const index of house) {
-            const cell = gameState[index];
-            // Only check empty cells with candidates
-            if (!cell.value && cell.candidates.size > 0) {
-                for (const num of cell.candidates) {
-                    candidateCounts[num]++;
-                    candidateMap[num].push(index);
-                }
-            }
-        }
-
-        // 3. Find numbers that appear exactly once
-        for (let num = 1; num <= 9; num++) {
-            if (candidateCounts[num] === 1) {
-                // This 'num' is a hidden single in this house
-                const cellIndex = candidateMap[num][0];
-                
-                // Only set if the cell has more than one candidate
-                // (If it only has one, it's a "Naked Single", not "Hidden")
-                if (gameState[cellIndex].candidates.size > 1) {
-                    gameState[cellIndex].hiddenSingle = num;
-                }
-            }
-        }
-    }
-}
 // --- END ---
+function updateGameStateWithBoard(boardObject) {
+    gameState = boardObject.map((cell, index) => {
+        const value = cell.val === null ? null : cell.val;
+        return {
+            ...gameState[index],
+            value: value,
+        };
+    });
+}
