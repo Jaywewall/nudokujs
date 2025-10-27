@@ -1,0 +1,379 @@
+/* === SIMPLIFIED BLACKOUT STYLE v3 === */
+.blacked-out {
+    /* No background-color here */
+    /* No color rule here */
+    transition: background-color 0.1s ease-out; /* Keep transition */
+}
+.blacked-out .candidates-grid,
+.blacked-out .candidate-item {
+    opacity: 0 !important; /* Hide candidates */
+    pointer-events: none !important;
+    transition: opacity 0.1s ease-out !important;
+}
+/* REMOVED the .blacked-out span rule entirely */
+
+/* === MODIFIED === */
+/* Ensure default text color applies normally */
+.sudoku-cell {
+    /* ADD a default color if not already present */
+    color: var(--text-primary);
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+    border-color: var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem; /* text-2xl */
+    line-height: 2rem;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden; /* Added to prevent content expansion */
+    box-sizing: border-box; /* Ensure padding/border included */
+}
+/* Ensure spans inherit color unless specifically styled (like .wrong-value) */
+.sudoku-cell span {
+    opacity: 1; /* Reset opacity from previous attempt */
+    /* No specific color here - let it inherit or be set by .c1-9 or .wrong-value */
+    transition: opacity 0.1s ease-out;
+}
+
+
+/* --- Base Styles --- */
+:root {
+    --bg-primary: theme('colors.white');
+    --bg-secondary: theme('colors.slate.100');
+    --text-primary: theme('colors.slate.900');
+    --text-secondary: theme('colors.slate.600');
+    --text-muted: theme('colors.slate.500');
+    --border-color: theme('colors.slate.300');
+    --border-strong: theme('colors.slate.400');
+    --bg-hover: theme('colors.slate.200');
+
+    /* Modern Rainbow Color Palette */
+    --color-1: #ef4444; /* Red */
+    --color-2: #f97316; /* Orange */
+    --color-3: #eab308; /* Yellow */
+    --color-4: #84cc16; /* Lime */
+    --color-5: #22c55e; /* Green */
+    --color-6: #14b8a6; /* Teal */
+    --color-7: #3b82f6; /* Blue */
+    --color-8: #8b5cf6; /* Violet */
+    --color-9: #ec4899; /* Pink */
+
+    /* mid-grey for digits on the black puck (Tailwind slate-400) */
+    --anti-digit: #94a3b8;
+
+    /* Pastel Rainbow for Animation */
+    --pastel-1: #fecaca;
+    --pastel-2: #fed7aa;
+    --pastel-3: #fef08a;
+    --pastel-4: #d9f99d;
+    --pastel-5: #bbf7d0;
+    --pastel-6: #99f6e4;
+    --pastel-7: #bfdbfe;
+    --pastel-8: #ddd6fe;
+    --pastel-9: #fbcfe8;
+}
+
+html, body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    overscroll-behavior: none;
+    font-family: sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+main#game-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Center the new wrapper vertically */
+    align-items: center;    /* Center the new wrapper horizontally */
+    height: 100%;
+    width: 100%;
+    padding: 0.5rem; /* p-2 */
+    overflow: hidden;
+}
+
+#game-elements-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center children horizontally */
+    width: 100%;
+    max-width: 28rem; /* max-w-md */
+}
+
+
+header {
+    flex-shrink: 0;
+    width: 100%;
+    margin-bottom: 0.5rem; /* mb-2 */
+    padding: 0.5rem; /* p-2 */
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#grid-wrapper {
+    flex-shrink: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    overflow: hidden;
+}
+
+#sudoku-grid {
+    border-radius: 0.5rem;
+    touch-action: none;
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    max-height: calc(100vh - 150px); /* Safety constraint */
+    background-color: var(--bg-secondary);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(9, 1fr); /* Let aspect-ratio define height */
+    flex-shrink: 0; /* Prevent grid squishing */
+    box-sizing: border-box; /* Ensure padding/border included */
+}
+
+#sudoku-grid > .sudoku-cell { border-width: 1px; }
+#sudoku-grid > .sudoku-cell:nth-child(9n + 3),
+#sudoku-grid > .sudoku-cell:nth-child(9n + 6) {
+  border-right-width: 3px; border-right-color: var(--border-strong);
+}
+#sudoku-grid > .sudoku-cell:nth-child(9n + 4),
+#sudoku-grid > .sudoku-cell:nth-child(9n + 7) { border-left-width: 0; }
+#sudoku-grid > .sudoku-cell:nth-child(n+19):nth-child(-n+27),
+#sudoku-grid > .sudoku-cell:nth-child(n+46):nth-child(-n+54) {
+  border-bottom-width: 3px; border-bottom-color: var(--border-strong);
+}
+#sudoku-grid > .sudoku-cell:nth-child(n+28):nth-child(-n+36),
+#sudoku-grid > .sudoku-cell:nth-child(n+55):nth-child(-n+63) { border-top-width: 0; }
+
+
+#number-picker {
+    flex-shrink: 0;
+    width: 100%;
+    margin-top: 1rem; /* mt-4 */
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 0.5rem;
+}
+
+
+.sudoku-cell.selected { background-color: rgba(59,130,246,0.25); transform: scale(0.95); }
+.sudoku-cell.input-mode { background-color: rgba(59,130,246,0.4); box-shadow: 0 0 0 3px theme('colors.blue.500'); z-index: 10; }
+
+.c1 { color: var(--color-1); } .bgc1-light { background-color: rgba(239, 68, 68, 0.15); } .bgc1 { background-color: rgba(239, 68, 68, 0.3); }
+.c2 { color: var(--color-2); } .bgc2-light { background-color: rgba(249, 115, 22, 0.15); } .bgc2 { background-color: rgba(249, 115, 22, 0.3); }
+.c3 { color: var(--color-3); } .bgc3-light { background-color: rgba(234, 179, 8, 0.15); } .bgc3 { background-color: rgba(234, 179, 8, 0.3); }
+.c4 { color: var(--color-4); } .bgc4-light { background-color: rgba(132, 204, 22, 0.15); } .bgc4 { background-color: rgba(132, 204, 22, 0.3); }
+.c5 { color: var(--color-5); } .bgc5-light { background-color: rgba(34, 197, 94, 0.15); } .bgc5 { background-color: rgba(34, 197, 94, 0.3); }
+.c6 { color: var(--color-6); } .bgc6-light { background-color: rgba(20, 184, 166, 0.15); } .bgc6 { background-color: rgba(20, 184, 166, 0.3); }
+.c7 { color: var(--color-7); } .bgc7-light { background-color: rgba(59, 130, 246, 0.15); } .bgc7 { background-color: rgba(59, 130, 246, 0.3); }
+.c8 { color: var(--color-8); } .bgc8-light { background-color: rgba(139, 92, 246, 0.15); } .bgc8 { background-color: rgba(139, 92, 246, 0.3); }
+.c9 { color: var(--color-9); } .bgc9-light { background-color: rgba(236, 72, 153, 0.15); } .bgc9 { background-color: rgba(236, 72, 153, 0.3); }
+
+/* === MODIFIED === */
+.candidates-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    width: 100%;
+    height: 100%;
+    /* font-size: 0.6em; Replaced with vmin */
+    font-size: clamp(8px, 1.8vmin, 14px); /* Use clamp for min/max size */
+    line-height: 1; /* Keep line height tight */
+    text-align: center;
+    color: var(--text-secondary);
+    transition: opacity 0.2s ease-in-out;
+    box-sizing: border-box; /* Ensure padding/border included */
+}
+.candidates-grid.hidden { opacity: 0; pointer-events: none; }
+.candidate-item {
+    display: grid;
+    place-items: center;
+    box-sizing: border-box; /* Ensure padding/border included */
+}
+.candidate-item.anti { background:#000; color: var(--anti-digit); border-radius: 9999px; width: 72%; height: 72%; margin: auto; font-weight: 600; }
+
+#radial-menu { transition: opacity 0.15s ease, transform 0.15s ease; }
+.radial-item { transition: transform 0.1s ease, background-color 0.1s ease; cursor: pointer; }
+.radial-item:hover { transform: scale(1.2); background-color: rgba(59,130,246,0.5); }
+.radial-item.highlighted { transform: scale(1.4); background-color: rgba(59,130,246,0.8); color: white; }
+
+#settings-modal select, #assistance-modal select { background-color: var(--bg-primary); border-color: var(--border-color); }
+
+@keyframes pulse-yellow {
+  0%, 100% {
+    background-color: rgba(234, 179, 8, 0.25); /* Original yellow */
+  }
+  50% {
+    background-color: rgba(234, 179, 8, 0.10); /* Lighter yellow */
+  }
+}
+
+@keyframes rainbow-sweep {
+    0% { background-color: var(--pastel-1); }
+    11% { background-color: var(--pastel-2); }
+    22% { background-color: var(--pastel-3); }
+    33% { background-color: var(--pastel-4); }
+    44% { background-color: var(--pastel-5); }
+    55% { background-color: var(--pastel-6); }
+    66% { background-color: var(--pastel-7); }
+    77% { background-color: var(--pastel-8); }
+    88% { background-color: var(--pastel-9); }
+    100% { background-color: var(--pastel-1); }
+}
+.animate-rainbow-sweep { animation: rainbow-sweep 0.5s linear forwards; }
+.animate-rainbow-sweep-long { animation: rainbow-sweep 1s linear 2; }
+
+/* Red for wrong locked values */
+.wrong-value { color: var(--color-1) !important; }
+
+#input-pill { transition: opacity 0.1s ease, transform 0.1s ease; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.2); transform-origin: bottom center; will-change: transform, opacity; contain: layout paint; }
+#input-pill.modal-glass{ background-color: rgba(248, 250, 252, 0.9); border: 1px solid rgba(0,0,0,0.08); }
+#number-picker, #input-pill { touch-action: none; }
+.pill-item { transition: background-color 0.2s; }
+.pill-item.highlighted { background-color: rgba(59,130,246,0.5); }
+#input-pill .pill-item svg { display: block; }
+#input-pill.no-selection .pill-item[data-type="candidate"],
+#input-pill.no-selection .pill-item[data-type="anti-candidate"],
+#input-pill.no-selection .pill-item[data-type="value"],
+#input-pill.multi-selection .pill-item[data-type="value"],
+#input-pill.multi-selection .pill-item[data-type="selection-mode"],
+#input-pill.single-selection .pill-item[data-type="selection-mode"] { display: none; }
+#input-pill:not(.no-selection) .pill-item[data-type="selection-mode"] { display: none; }
+
+/* === RESTORED SECTION (like the old file) === */
+/* Use outline for selection highlight */
+.number-picker-btn.picker-selected {
+    outline-offset: 2px; /* Adjust spacing between outline and button edge */
+}
+.number-picker-btn.picker-selected.bgc1-light { outline: 3px solid var(--color-1); }
+.number-picker-btn.picker-selected.bgc2-light { outline: 3px solid var(--color-2); }
+.number-picker-btn.picker-selected.bgc3-light { outline: 3px solid var(--color-3); }
+.number-picker-btn.picker-selected.bgc4-light { outline: 3px solid var(--color-4); }
+.number-picker-btn.picker-selected.bgc5-light { outline: 3px solid var(--color-5); }
+.number-picker-btn.picker-selected.bgc6-light { outline: 3px solid var(--color-6); }
+.number-picker-btn.picker-selected.bgc7-light { outline: 3px solid var(--color-7); }
+.number-picker-btn.picker-selected.bgc8-light { outline: 3px solid var(--color-8); }
+.number-picker-btn.picker-selected.bgc9-light { outline: 3px solid var(--color-9); }
+/* Make sure the base button rule doesn't conflict */
+.number-picker-btn {
+  box-sizing: border-box;
+  /* Removed the transparent border */
+  line-height: 1;
+}
+/* === END RESTORED SECTION === */
+
+
+#number-picker.candidate-isolation-mode .number-picker-btn { opacity: .22; filter: grayscale(1) saturate(0) contrast(.9); }
+#number-picker.candidate-isolation-mode .number-picker-btn.iso-selected { opacity: 1 !important; filter: none !important; transform: scale(1.1); box-shadow: 0 0 0 2px var(--border-color), 0 0 0 4px var(--border-strong); }
+
+.hold-progress-indicator { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; transform: rotate(-90deg); }
+.hold-progress-indicator circle { stroke: theme('colors.blue.500'); stroke-width: 4; fill: transparent; stroke-dasharray: 145; stroke-dashoffset: 145; animation: hold-progress 500ms linear forwards; }
+@keyframes hold-progress { to { stroke-dashoffset: 0; } }
+
+#dropdown-menu {
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+}
+#dropdown-menu.hidden {
+  opacity: 0;
+  transform: scale(0.95);
+  pointer-events: none;
+}
+
+/* <<< TAPPED TARGET STYLES (CIRCLE) >>> */
+/* Tapped Target - Correct Value or Given */
+.tapped-target > span:not(.wrong-value) {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5em; /* Adjust size relative to font */
+    height: 1.5em;
+    border-radius: 50%;
+    border: 3px solid var(--highlight-color, blue); /* Use the JS-set variable */
+    box-sizing: border-box;
+    transition: border-color 0.1s ease-in-out;
+}
+
+/* Tapped Target - Incorrect Value */
+.tapped-target > span.wrong-value {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5em;
+    height: 1.5em;
+    border-radius: 50%;
+    border: 3px solid var(--color-1); /* Directly use red color variable */
+    box-sizing: border-box;
+}
+/* <<< END TAPPED TARGET STYLES >>> */
+
+
+/* --- Ensure font-size consistency --- */
+/* Base size for cells and spans within */
+.sudoku-cell, .sudoku-cell span {
+   font-size: 1.5rem; /* text-2xl base */
+   line-height: 1; /* Keep line height tight */
+}
+
+/* Adjust candidate grid font size if needed */
+.candidates-grid {
+    font-size: clamp(8px, 1.8vmin, 14px);
+    line-height: 1;
+}
+
+/* --- ADDED: Assistance Feature Styles --- */
+/* Style for candidates-grid when bivalue rule is active */
+/* This will hide the grid by default */
+.assist-bivalue-active .candidates-grid {
+    opacity: 0;
+    pointer-events: none;
+}
+/* This will re-show the grid ONLY if the cell is marked as a bivalue-cell */
+.assist-bivalue-active .bivalue-cell .candidates-grid {
+    opacity: 1;
+    pointer-events: auto;
+}
+/* Optional: Add a highlight to the bivalue cells */
+.assist-bivalue-active .bivalue-cell {
+    /* background-color: rgba(234, 179, 8, 0.25); */ /* Replaced by animation */
+    animation: pulse-yellow 2s infinite ease-in-out;
+}
+
+/* === ADDED: Hidden Single Pulse Animations === */
+@keyframes pulse-c1 { 0%, 100% { background-color: rgba(239, 68, 68, 0.15); } 50% { background-color: rgba(239, 68, 68, 0.05); } }
+.animate-pulse-c1 { animation: pulse-c1 2s infinite ease-in-out; }
+
+@keyframes pulse-c2 { 0%, 100% { background-color: rgba(249, 115, 22, 0.15); } 50% { background-color: rgba(249, 115, 22, 0.05); } }
+.animate-pulse-c2 { animation: pulse-c2 2s infinite ease-in-out; }
+
+@keyframes pulse-c3 { 0%, 100% { background-color: rgba(234, 179, 8, 0.15); } 50% { background-color: rgba(234, 179, 8, 0.05); } }
+.animate-pulse-c3 { animation: pulse-c3 2s infinite ease-in-out; }
+
+@keyframes pulse-c4 { 0%, 100% { background-color: rgba(132, 204, 22, 0.15); } 50% { background-color: rgba(132, 204, 22, 0.05); } }
+.animate-pulse-c4 { animation: pulse-c4 2s infinite ease-in-out; }
+
+@keyframes pulse-c5 { 0%, 100% { background-color: rgba(34, 197, 94, 0.15); } 50% { background-color: rgba(34, 197, 94, 0.05); } }
+.animate-pulse-c5 { animation: pulse-c5 2s infinite ease-in-out; }
+
+@keyframes pulse-c6 { 0%, 100% { background-color: rgba(20, 184, 166, 0.15); } 50% { background-color: rgba(20, 184, 166, 0.05); } }
+.animate-pulse-c6 { animation: pulse-c6 2s infinite ease-in-out; }
+
+@keyframes pulse-c7 { 0%, 100% { background-color: rgba(59, 130, 246, 0.15); } 50% { background-color: rgba(59, 130, 246, 0.05); } }
+.animate-pulse-c7 { animation: pulse-c7 2s infinite ease-in-out; }
+
+@keyframes pulse-c8 { 0%, 100% { background-color: rgba(139, 92, 246, 0.15); } 50% { background-color: rgba(139, 92, 246, 0.05); } }
+.animate-pulse-c8 { animation: pulse-c8 2s infinite ease-in-out; }
+
+@keyframes pulse-c9 { 0%, 100% { background-color: rgba(236, 72, 153, 0.15); } 50% { background-color: rgba(236, 72, 153, 0.05); } }
+.animate-pulse-c9 { animation: pulse-c9 2s infinite ease-in-out; }
+/* === END === */
